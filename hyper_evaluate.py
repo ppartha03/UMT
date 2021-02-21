@@ -42,6 +42,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def HyperEvaluate(config):
     ext_language = config['lang']
     perturbation = config['perturb']
+    n_beams = config['num_beams']
 
     nlp_o = spacy.load(ext_language+"_core_news_sm")
     nlp = spacy.load("en_core_web_sm")
@@ -55,9 +56,9 @@ def HyperEvaluate(config):
     translation = pipeline("translation_en_to_"+config['lang'], model=model, tokenizer=tokenizer)
     translation_inv = pipeline("translation_"+config['lang']+"_to_back", model=model_inv, tokenizer=tokenizer_inv)
 
-    perturbations = ['treeMirror', 'verbAtBeginning', 'verbSwaps', 'adverbVerbSwap',
-    'nounVerbSwap', 'nounVerbMismatched', 'nounAdjSwap', 'shuffleHalvesFirst', 'shuffleHalvesLast',
-    'reversed', wordShuffle, 'rotateAroundRoot','functionalShuffle']
+    perturbations = [treeMirrorPre, treeMirrorPo, treeMirrorIn, verbAtBeginning, verbSwaps, adverbVerbSwap,
+      nounVerbSwap, nounVerbMismatched, nounAdjSwap, shuffleHalvesFirst, shuffleHalvesLast,
+      reversed, wordShuffle, rotateAroundRoot,functionalShuffle, nounSwaps, conjunctionShuffle]
 
     assert perturbation in perturbations
 
@@ -73,7 +74,8 @@ def HyperEvaluate(config):
     wandb.run.name = config['lang'] + '-' + config['perturb'].__name__
 
     wandb.config.update(config)
-
+    # todo : Save samples in a csv : with metrics, perturbed example and beams
+    # todo : ensure the beams have the same seed across runs and so do the perturbation functions. Use the index as seed value. 
     for i in range(0,len(lines),4):
 
         other_lang_gold = lines[i].strip()
@@ -84,7 +86,7 @@ def HyperEvaluate(config):
         other_lang_translated = translation(eng_gold, max_length=400)[0]['translation_text']
 
         input_ids = tokenizer.encode(eng_perturbed, return_tensors="pt")
-        other_lang_translated_p_beams = model.generate(input_ids, max_length=100, num_beams = 50 ,num_return_sequences=50, do_sample=True)
+        other_lang_translated_p_beams = model.generate(input_ids, max_length=100, num_beams = 50 ,num_return_sequences=n_beams, do_sample=True)
 
         #other_lang_translated_p = translation(eng_perturbed, max_length=400)[0]['translation_text']
 
@@ -150,9 +152,10 @@ if __name__ == '__main__':
 
     PARAM_GRID = list(product(
     ['de'],#'fr','ru','jap'], #languages
-    [wordShuffle]#, 'verbAtBeginning', 'verbSwaps', 'adverbVerbSwap',
-    #'nounVerbSwap', 'nounVerbMismatched', 'nounAdjSwap', 'shuffleHalvesFirst', 'shuffleHalvesLast',
-    #'reversed', 'treeMirror', 'rotateAroundRoot','functionalShuffle'] #perturbations
+    [treeMirrorPre, treeMirrorPo, treeMirrorIn, verbAtBeginning, verbSwaps, adverbVerbSwap,
+      nounVerbSwap, nounVerbMismatched, nounAdjSwap, shuffleHalvesFirst, shuffleHalvesLast,
+      reversed, wordShuffle, rotateAroundRoot,functionalShuffle, nounSwaps, conjunctionShuffle],
+    [1,5,10] # beam-width
     )
     )
 
@@ -163,10 +166,11 @@ if __name__ == '__main__':
         params = PARAM_GRID[param_ix]
 
 
-        lang, pert = params
+        lang, pert, b = params
         config = {}
         config['lang'] = lang
         config['perturb'] = pert
+        config['num_beams'] = b
 
         h_param_list.append(config)
 
