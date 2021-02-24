@@ -76,6 +76,17 @@ def HyperEvaluate(config):
     wandb.config.update(config)
     # todo : Save samples in a csv : with metrics, perturbed example and beams
     # todo : ensure the beams have the same seed across runs and so do the perturbation functions. Use the index as seed value.
+    fieldnames = ['Gold English'] + ['Beam/'+str(i+1) for i in range(n_beams)] + ["index", "len",
+    "M1_bleu2", "M2_bleu2_max", "M2_bleu2_rand", "M1_bleurt", "M2_bleurt_max", "M2_bleurt_rand", "M3_bleu2_max", "M3_bleu2_rand"]
+
+    target_NL =  open(os.path.join('Results','Samples','UMT_'+ config['lang'] + '_' + str(config['num_beams']) + '_' + config['perturb'].__name__ +'.csv'), "w")
+    writer_NL = csv.DictWriter(target_NL, fieldnames=fieldnames[:-1])
+    lock = FileLock(os.path.join(open(os.path.join('Results','Samples','UMT_'+ config['lang'] + '_' + str(config['num_beams']) + '_' + config['perturb'].__name__ +'.csv.lock'))
+
+    with lock:
+        with open(target_NL,'w') as f:
+            writer_NL.writeheader()
+        target_NL.close()
     for i in range(0,len(lines),4):
 
         other_lang_gold = lines[i].strip()
@@ -124,11 +135,12 @@ def HyperEvaluate(config):
         M2_bleurt = []
         ###
 
-
+        ### add saving sample with index
+        eng_back_translated_per = {}
         for k, other_lang_translated_p in enumerate(other_lang_translated_p_beams):
 
             eng_back_translated_p = translation_inv(tokenizer.decode(other_lang_translated_p), max_length=400)[0]['translation_text']
-
+            eng_back_translated_per.update({k:eng_back_translated_p})
             # BLEU-2
             bleu2_eng_back_p_eng_perturbed_beam.append(bleu_score([[str(_) for _ in nlp(eng_perturbed)]], [str(_) for _ in nlp(eng_back_translated_p)], (0.5,0.5)))
 
@@ -153,7 +165,7 @@ def HyperEvaluate(config):
         M2_bleurt_max = max(M2_bleurt)
         M2_bleurt_rand = sum(M2_bleurt)/float(len(M2_bleurt))
 
-        wandb.log({
+        log_dict = {
         "index": i,
         "len": len(nlp(eng_gold)),
         "M1_bleu2": M1_bleu2,
@@ -164,7 +176,18 @@ def HyperEvaluate(config):
         "M2_bleurt_rand": M2_bleurt_rand,
         "M3_bleu2_max": M3_bleu2_max,
         "M3_bleu2_rand": M3_bleu2_rand
-        })
+        }
+
+        wandb.log(log_dict)
+
+        for k, v in eng_back_translated_per:
+            log_dict.update({'Beam/'+str(k+1): v})
+        lock = FileLock(os.path.join(open(os.path.join('Results','Samples','UMT_'+ config['lang'] + '_' + str(config['num_beams']) + '_' + config['perturb'].__name__ +'.csv.lock'))
+        with lock:
+            with open(target_NL,'a') as f:
+                writer_NL.writerow(log_dict)
+
+
 
 if __name__ == '__main__':
 
