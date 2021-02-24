@@ -47,11 +47,11 @@ def HyperEvaluate(config):
     nlp_o = spacy.load(ext_language+"_core_news_sm")
     nlp = spacy.load("en_core_web_sm")
 
-    tokenizer = AutoTokenizer.from_pretrained("Helsinki-NLP/opus-mt-en-" + ext_language)
-    model = AutoModelForSeq2SeqLM.from_pretrained("Helsinki-NLP/opus-mt-en-" + ext_language)
+    tokenizer = AutoTokenizer.from_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-" + ext_language)
+    model = AutoModelForSeq2SeqLM.from_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-" + ext_language + "-model")
 
-    tokenizer_inv = AutoTokenizer.from_pretrained("Helsinki-NLP/opus-mt-" + ext_language + "-en")
-    model_inv = AutoModelForSeq2SeqLM.from_pretrained("Helsinki-NLP/opus-mt-" + ext_language + "-en")
+    tokenizer_inv = AutoTokenizer.from_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-" + ext_language + "-en")
+    model_inv = AutoModelForSeq2SeqLM.from_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-" + ext_language + "-en-model")
 
     translation = pipeline("translation_en_to_"+config['lang'], model=model, tokenizer=tokenizer)
     translation_inv = pipeline("translation_"+config['lang']+"_to_back", model=model_inv, tokenizer=tokenizer_inv)
@@ -75,7 +75,7 @@ def HyperEvaluate(config):
 
     wandb.config.update(config)
     # todo : Save samples in a csv : with metrics, perturbed example and beams
-    # todo : ensure the beams have the same seed across runs and so do the perturbation functions. Use the index as seed value. 
+    # todo : ensure the beams have the same seed across runs and so do the perturbation functions. Use the index as seed value.
     for i in range(0,len(lines),4):
 
         other_lang_gold = lines[i].strip()
@@ -91,47 +91,58 @@ def HyperEvaluate(config):
         #other_lang_translated_p = translation(eng_perturbed, max_length=400)[0]['translation_text']
 
         eng_back_translated = translation_inv(other_lang_translated, max_length=400)[0]['translation_text']
+
         #BLEU(e', e)
         bleu2_eng_p_eng_gold = bleu_score([[str(_) for _ in nlp(eng_gold)]], [str(_) for _ in nlp(eng_perturbed)], (0.5,0.5))
         #BLEU(e, e_1)
+
         bleu2_eng_back_translated_eng_gold = bleu_score([[str(_) for _ in nlp(eng_gold)]], [str(_) for _ in nlp(eng_back_translated)], (0.5,0.5))
 
         bleu2_other_translated_other_gold = bleu_score([[str(_) for _ in nlp_o(other_lang_gold)]], [str(_) for _ in nlp_o(other_lang_translated)])
         M1_bleu2 = bleu2_eng_p_eng_gold / bleu2_eng_back_translated_eng_gold
 
-        bleu2_eng_back_p_eng_gold_beam = []
+        bleu2_eng_back_p_eng_perturbed_beam = []
 
         M2_bleu2 = []
         M3_bleu2 = []
+
+        ###
+        # BLEURT
+
+        bleurt_out = bleurt_ops([eng_gold], [eng_perturbed])
+        assert bleurt_out["predictions"].shape == (1,)
+        bleurt_eng_p_eng_gold = 3.5 + float(bleurt_out["predictions"])
+
+        bleurt_out = bleurt_ops([eng_gold], [eng_back_translated])
+        assert bleurt_out["predictions"].shape == (1,)
+        bleurt_eng_back_translated_eng_gold = 3.5 + float(bleurt_out["predictions"])
+
+        M1_bleurt = bleurt_eng_p_eng_gold / bleurt_eng_back_translated_eng_gold
+
+        bleurt_eng_back_p_eng_perturbed_beam = []
+
+        M2_bleurt = []
+        ###
+
 
         for k, other_lang_translated_p in enumerate(other_lang_translated_p_beams):
 
             eng_back_translated_p = translation_inv(tokenizer.decode(other_lang_translated_p), max_length=400)[0]['translation_text']
 
             # BLEU-2
-            bleu2_eng_back_p_eng_gold_beam.append(bleu_score([[str(_) for _ in nlp(eng_gold)]], [str(_) for _ in nlp(eng_back_translated_p)], (0.5,0.5)))
+            bleu2_eng_back_p_eng_perturbed_beam.append(bleu_score([[str(_) for _ in nlp(eng_perturbed)]], [str(_) for _ in nlp(eng_back_translated_p)], (0.5,0.5)))
 
-
-            M2_bleu2.append(bleu2_eng_back_p_eng_gold_beam[-1]/bleu2_eng_back_translated_eng_gold)
+            M2_bleu2.append(bleu2_eng_back_p_eng_perturbed_beam[-1]/bleu2_eng_back_translated_eng_gold)
 
             bleu2_other_translated_p_other_gold = bleu_score([[str(_) for _ in nlp_o(tokenizer.decode(other_lang_translated_p))]],[str(_) for _ in nlp_o(other_lang_gold)])
 
-            M3_bleu2.append(bleu2_other_translated_p_other_gold)
+            M3_bleu2.append(bleu2_other_translated_p_other_gold/bleu2_other_translated_other_gold)
 
+            bleurt_out = bleurt_ops([eng_perturbed], [eng_back_translated_p])
+            assert bleurt_out["predictions"].shape == (1,)
+            bleurt_eng_back_p_eng_perturbed_beam.append(3.5 + float(bleurt_out["predictions"]))
 
-        # BLEURT
-
-        # bleurt_out = bleurt_ops([eng_perturbed], [eng_back_translated_p])
-        # assert bleurt_out["predictions"].shape == (1,)
-        # M2_bleu_rt = float(bleurt_out["predictions"])
-        #
-        # bleurt_out = bleurt_ops([eng_gold], [eng_perturbed])
-        # assert bleurt_out["predictions"].shape == (1,)
-        # bleurt_metric_eng_p_eng_gold = float(bleurt_out["predictions"])
-        #
-        # bleurt_out = bleurt_ops([eng_gold], [eng_back_translated_p])
-        # assert bleurt_out["predictions"].shape == (1,)
-        # bleurt_metric_eng_back_eng_gold = float(bleurt_out["predictions"])
+            M2_bleu2.append(bleurt_eng_back_p_eng_perturbed_beam[-1]/bleu2_eng_back_translated_eng_gold)
 
         M3_bleu2_max = max(M3_bleu2)
         M3_bleu2_rand = sum(M3_bleu2)/float(len(M3_bleu2))
@@ -139,11 +150,18 @@ def HyperEvaluate(config):
         M2_bleu2_max = max(M2_bleu2)
         M2_bleu2_rand = sum(M2_bleu2)/float(len(M2_bleu2))
 
+        M2_bleurt_max = max(M2_bleurt)
+        M2_bleurt_rand = sum(M2_bleurt)/float(len(M2_bleurt))
+
         wandb.log({
         "index": i,
+        "len": len(nlp(eng_gold)),
         "M1_bleu2": M1_bleu2,
         "M2_bleu2_max": M2_bleu2_max,
         "M2_bleu2_rand": M2_bleu2_rand,
+        "M1_bleurt": M1_bleurt,
+        "M2_bleurt_max": M2_bleurt_max,
+        "M2_bleurt_rand": M2_bleurt_rand,
         "M3_bleu2_max": M3_bleu2_max,
         "M3_bleu2_rand": M3_bleu2_rand
         })
@@ -151,7 +169,7 @@ def HyperEvaluate(config):
 if __name__ == '__main__':
 
     PARAM_GRID = list(product(
-    ['de'],#'fr','ru','jap'], #languages
+    ['de'],#'fr','ru','ja'], #languages
     [treeMirrorPre, treeMirrorPo, treeMirrorIn, verbAtBeginning, verbSwaps, adverbVerbSwap,
       nounVerbSwap, nounVerbMismatched, nounAdjSwap, shuffleHalvesFirst, shuffleHalvesLast,
       reversed, wordShuffle, rotateAroundRoot,functionalShuffle, nounSwaps, conjunctionShuffle],
@@ -194,8 +212,25 @@ if __name__ == '__main__':
         slurm_additional_parameters={"account": "rrg-bengioy-ad"},
         tasks_per_node=num_gpus,
         cpus_per_task=workers_per_gpu,
-        slurm_mem="16G",#16G
+        slurm_mem="32G",#16G
         slurm_array_parallelism=50,
     )
     job = executor.map_array(HyperEvaluate,h_param_list)
     print('Jobs submitted!')
+
+
+# config = AutoConfig.from_pretrained("Helsinki-NLP/opus-mt-en-jap")
+# tokenizer = AutoTokenizer.from_pretrained("Helsinki-NLP/opus-mt-en-jap")
+# model = AutoModelForSeq2SeqLM.from_pretrained("Helsinki-NLP/opus-mt-en-jap")
+#
+# tokenizer.save_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-ja")
+# config.save_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-ja")
+# model.save_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-ja-model")
+#
+# config = AutoConfig.from_pretrained("Helsinki-NLP/opus-mt-jap-en")
+# tokenizer = AutoTokenizer.from_pretrained("Helsinki-NLP/opus-mt-jap-en")
+# model = AutoModelForSeq2SeqLM.from_pretrained("Helsinki-NLP/opus-mt-jap-en")
+#
+# tokenizer.save_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-ja-en")
+# model.save_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-ja-en-model")
+# config.save_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-ja-en")
