@@ -16,20 +16,10 @@ import wandb
 from itertools import product
 import sys
 from filelock import FileLock
-from nltk.translate.bleu_score import sentence_bleu as bleu_score
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
-from bleurt import score
 
 import time
 
 #from comet_ml import OfflineExperiment
-import torch
-from torch.autograd import Variable
-import torch.nn as nn
-
-import pandas as pd
-from collections import Counter
-import pdb
 
 from perturbations import *
 
@@ -130,7 +120,6 @@ if __name__ == '__main__':
 
         params = PARAM_GRID[param_ix]
 
-
         model, lang, pert = params
         config = {}
         config['lang'] = lang
@@ -159,7 +148,7 @@ if __name__ == '__main__':
         slurm_additional_parameters={"account": "rrg-bengioy-ad"},
         tasks_per_node=num_gpus,
         cpus_per_task=workers_per_gpu,
-        slurm_mem="32G",#16G
+        slurm_mem="8G",#16G
         slurm_array_parallelism=50,
     )
     job = executor.map_array(HyperEvaluate,h_param_list)
