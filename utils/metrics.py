@@ -2,7 +2,7 @@ from nltk.translate.bleu_score import sentence_bleu as bleu_score
 
 def bleu(a,b, weights = (1.0,)):
     a = [a]
-    return bleu_score(a, b, weight = weights)
+    return bleu_score(a, b, weights)
 
 def levenshtein(a,b, weights = None):
     "Calculates the Levenshtein distance between a and b."

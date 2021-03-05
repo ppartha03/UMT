@@ -17,7 +17,6 @@ import wandb
 from itertools import product
 import sys
 from filelock import FileLock
-from transformers import MarianTokenizer, MarianMTModel
 from utils.metrics import *
 
 import time
@@ -110,7 +109,7 @@ def HyperEvaluate(config):
             en_perturb = json.loads(eng_perturb_sents[i])
 
             o_lang_gold = json.loads(o_lang_gold_sents[i])
-            o_lang_perturb = json.loads(o_lang_pertub_sents[i])
+            o_lang_perturb = json.loads(o_lang_perturb_sents[i])
 
             en_gold_translate = json.loads(en_gold_translate_sents[i])
             en_perturb_translate = json.loads(en_perturb_translate_sents[i])
@@ -179,10 +178,10 @@ if __name__ == '__main__':
         config['perturb'] = pert
         config['model'] = model
         config['metric'] = metric
-        config['bleu_n'] = None
+        config['n'] = None
 
         if config['metric'] == 'bleu':
-            config['bleu-n'] = bleu_n
+            config['n'] = bleu_n
 
         if config not in h_param_list:
             h_param_list.append(config)
