@@ -44,6 +44,19 @@ def HyperEvaluate(config):
     perturbation = config['perturb']
     n_beams = config['num_beams']
 
+    half = 'first'
+
+
+    if config['i'] > 10000:
+        half = 'third'
+        end = 20000
+    elif config['i'] > 5000:
+        half = 'second'
+        end = 14000
+    else:
+        half = 'first'
+        end = 7000
+
     nlp_o = spacy.load(ext_language+"_core_news_sm")
     nlp = spacy.load("en_core_web_sm")
 
@@ -76,115 +89,120 @@ def HyperEvaluate(config):
     wandb.config.update(config)
     # todo : Save samples in a csv : with metrics, perturbed example and beams
     # todo : ensure the beams have the same seed across runs and so do the perturbation functions. Use the index as seed value.
-    fieldnames = ['Gold English'] + ['Beam/'+str(i+1) for i in range(n_beams)] + ["index", "len",
-    "M1_bleu2", "M2_bleu2_max", "M2_bleu2_rand", "M1_bleurt", "M2_bleurt_max", "M2_bleurt_rand", "M3_bleu2_max", "M3_bleu2_rand"]
+    fieldnames = ['Gold English', 'English Perturbed'] + ['Beam/'+str(i+1) for i in range(n_beams)] + ["index", "half", "len", "M1_bleu2", "M2_bleu2_max", "M2_bleu2_rand", "M1_bleurt", "M2_bleurt_max", "M2_bleurt_rand", "M3_bleu2_max", "M3_bleu2_rand"]
 
-    target_NL =  open(os.path.join('Results','Samples','UMT_'+ config['lang'] + '_' + str(config['num_beams']) + '_' + config['perturb'].__name__ +'.csv'), "w")
-    writer_NL = csv.DictWriter(target_NL, fieldnames=fieldnames[:-1])
-    lock = FileLock(os.path.join(open(os.path.join('Results','Samples','UMT_'+ config['lang'] + '_' + str(config['num_beams']) + '_' + config['perturb'].__name__ +'.csv.lock'))
+    lock = FileLock(os.path.join('Results','Samples','UMT_'+ config['lang'] + '_' + str(config['num_beams']) + '_' + config['perturb'].__name__ + '_' + str(config['i']) + '.csv.lock'))
 
     with lock:
-        with open(target_NL,'w') as f:
+        with open(os.path.join('Results','Samples','UMT_'+ config['lang'] + '_' + str(config['num_beams']) + '_' + config['perturb'].__name__ + '_' + str(config['i']) + '.csv'), "a") as f:
+            writer_NL = csv.DictWriter(f, fieldnames=fieldnames)
             writer_NL.writeheader()
-        target_NL.close()
-    for i in range(0,len(lines),4):
 
-        other_lang_gold = lines[i].strip()
-        eng_gold = lines[i+1].strip()
+            for i in range(config['i'],end,4):
 
-        eng_perturbed = config['perturb'](eng_gold)
+                other_lang_gold = lines[i].strip()
+                eng_gold = lines[i+1].strip()
 
-        other_lang_translated = translation(eng_gold, max_length=400)[0]['translation_text']
+                if len(eng_gold.split()) < 6:
+                    continue
 
-        input_ids = tokenizer.encode(eng_perturbed, return_tensors="pt")
-        other_lang_translated_p_beams = model.generate(input_ids, max_length=100, num_beams = 50 ,num_return_sequences=n_beams, do_sample=True)
+                try:
+                    eng_perturbed = config['perturb'](eng_gold)
+                except:
+                    continue
 
-        #other_lang_translated_p = translation(eng_perturbed, max_length=400)[0]['translation_text']
+                other_lang_translated = translation(eng_gold, max_length=400)[0]['translation_text']
 
-        eng_back_translated = translation_inv(other_lang_translated, max_length=400)[0]['translation_text']
+                input_ids = tokenizer.encode(eng_perturbed, return_tensors="pt")
+                other_lang_translated_p_beams = model.generate(input_ids, max_length=100, num_beams = 50 ,num_return_sequences=n_beams, do_sample=True)
 
-        #BLEU(e', e)
-        bleu2_eng_p_eng_gold = bleu_score([[str(_) for _ in nlp(eng_gold)]], [str(_) for _ in nlp(eng_perturbed)], (0.5,0.5))
-        #BLEU(e, e_1)
+                #other_lang_translated_p = translation(eng_perturbed, max_length=400)[0]['translation_text']
 
-        bleu2_eng_back_translated_eng_gold = bleu_score([[str(_) for _ in nlp(eng_gold)]], [str(_) for _ in nlp(eng_back_translated)], (0.5,0.5))
+                eng_back_translated = translation_inv(other_lang_translated, max_length=400)[0]['translation_text']
 
-        bleu2_other_translated_other_gold = bleu_score([[str(_) for _ in nlp_o(other_lang_gold)]], [str(_) for _ in nlp_o(other_lang_translated)])
-        M1_bleu2 = bleu2_eng_p_eng_gold / bleu2_eng_back_translated_eng_gold
+                #BLEU(e', e)
+                bleu2_eng_p_eng_gold = bleu_score([[str(_) for _ in nlp(eng_gold)]], [str(_) for _ in nlp(eng_perturbed)], (0.5,0.5))
+                #BLEU(e, e_1)
 
-        bleu2_eng_back_p_eng_perturbed_beam = []
+                bleu2_eng_back_translated_eng_gold = bleu_score([[str(_) for _ in nlp(eng_gold)]], [str(_) for _ in nlp(eng_back_translated)], (0.5,0.5))
 
-        M2_bleu2 = []
-        M3_bleu2 = []
+                bleu2_other_translated_other_gold = bleu_score([[str(_) for _ in nlp_o(other_lang_gold)]], [str(_) for _ in nlp_o(other_lang_translated)], (0.5,0.5))
+                M1_bleu2 = bleu2_eng_p_eng_gold / (0.1 + bleu2_eng_back_translated_eng_gold)
 
-        ###
-        # BLEURT
+                bleu2_eng_back_p_eng_perturbed_beam = []
 
-        bleurt_out = bleurt_ops([eng_gold], [eng_perturbed])
-        assert bleurt_out["predictions"].shape == (1,)
-        bleurt_eng_p_eng_gold = 3.5 + float(bleurt_out["predictions"])
+                M2_bleu2 = []
+                M3_bleu2 = []
 
-        bleurt_out = bleurt_ops([eng_gold], [eng_back_translated])
-        assert bleurt_out["predictions"].shape == (1,)
-        bleurt_eng_back_translated_eng_gold = 3.5 + float(bleurt_out["predictions"])
+                ###
+                # BLEURT
 
-        M1_bleurt = bleurt_eng_p_eng_gold / bleurt_eng_back_translated_eng_gold
+                bleurt_out = bleurt_ops([eng_gold], [eng_perturbed])
+                assert bleurt_out["predictions"].shape == (1,)
+                bleurt_eng_p_eng_gold = 3.5 + float(bleurt_out["predictions"])
 
-        bleurt_eng_back_p_eng_perturbed_beam = []
+                bleurt_out = bleurt_ops([eng_gold], [eng_back_translated])
+                assert bleurt_out["predictions"].shape == (1,)
+                bleurt_eng_back_translated_eng_gold = 3.5 + float(bleurt_out["predictions"])
 
-        M2_bleurt = []
-        ###
+                M1_bleurt = bleurt_eng_p_eng_gold / (0.1 + bleurt_eng_back_translated_eng_gold)
 
-        ### add saving sample with index
-        eng_back_translated_per = {}
-        for k, other_lang_translated_p in enumerate(other_lang_translated_p_beams):
+                bleurt_eng_back_p_eng_perturbed_beam = []
 
-            eng_back_translated_p = translation_inv(tokenizer.decode(other_lang_translated_p), max_length=400)[0]['translation_text']
-            eng_back_translated_per.update({k:eng_back_translated_p})
-            # BLEU-2
-            bleu2_eng_back_p_eng_perturbed_beam.append(bleu_score([[str(_) for _ in nlp(eng_perturbed)]], [str(_) for _ in nlp(eng_back_translated_p)], (0.5,0.5)))
+                M2_bleurt = []
+                ###
 
-            M2_bleu2.append(bleu2_eng_back_p_eng_perturbed_beam[-1]/bleu2_eng_back_translated_eng_gold)
+                ### add saving sample with index
+                eng_back_translated_per = {}
+                for k, other_lang_translated_p in enumerate(other_lang_translated_p_beams):
 
-            bleu2_other_translated_p_other_gold = bleu_score([[str(_) for _ in nlp_o(tokenizer.decode(other_lang_translated_p))]],[str(_) for _ in nlp_o(other_lang_gold)])
+                    eng_back_translated_p = translation_inv(tokenizer.decode(other_lang_translated_p, skip_special_tokens=True), max_length=400)[0]['translation_text']
+                    eng_back_translated_per.update({k:eng_back_translated_p})
+                    # BLEU-2
+                    bleu2_eng_back_p_eng_perturbed_beam.append(bleu_score([[str(_) for _ in nlp(eng_perturbed)]], [str(_) for _ in nlp(eng_back_translated_p)], (0.5,0.5)))
 
-            M3_bleu2.append(bleu2_other_translated_p_other_gold/bleu2_other_translated_other_gold)
+                    M2_bleu2.append(bleu2_eng_back_p_eng_perturbed_beam[-1]/(0.01 + bleu2_eng_back_translated_eng_gold))
 
-            bleurt_out = bleurt_ops([eng_perturbed], [eng_back_translated_p])
-            assert bleurt_out["predictions"].shape == (1,)
-            bleurt_eng_back_p_eng_perturbed_beam.append(3.5 + float(bleurt_out["predictions"]))
+                    bleu2_other_translated_p_other_gold = bleu_score([[str(_) for _ in nlp_o(tokenizer.decode(other_lang_translated_p, skip_special_tokens=True))]],[str(_) for _ in nlp_o(other_lang_gold)], (0.5,0.5))
 
-            M2_bleu2.append(bleurt_eng_back_p_eng_perturbed_beam[-1]/bleu2_eng_back_translated_eng_gold)
+                    M3_bleu2.append(bleu2_other_translated_p_other_gold/(0.01 + bleu2_other_translated_other_gold))
 
-        M3_bleu2_max = max(M3_bleu2)
-        M3_bleu2_rand = sum(M3_bleu2)/float(len(M3_bleu2))
+                    bleurt_out = bleurt_ops([eng_perturbed], [eng_back_translated_p])
+                    assert bleurt_out["predictions"].shape == (1,)
+                    bleurt_eng_back_p_eng_perturbed_beam.append(3.5 + float(bleurt_out["predictions"]))
 
-        M2_bleu2_max = max(M2_bleu2)
-        M2_bleu2_rand = sum(M2_bleu2)/float(len(M2_bleu2))
+                    M2_bleurt.append(bleurt_eng_back_p_eng_perturbed_beam[-1]/(0.1 + bleu2_eng_back_translated_eng_gold))
 
-        M2_bleurt_max = max(M2_bleurt)
-        M2_bleurt_rand = sum(M2_bleurt)/float(len(M2_bleurt))
+                M3_bleu2_max = max(M3_bleu2)
+                M3_bleu2_rand = sum(M3_bleu2)/float(len(M3_bleu2))
 
-        log_dict = {
-        "index": i,
-        "len": len(nlp(eng_gold)),
-        "M1_bleu2": M1_bleu2,
-        "M2_bleu2_max": M2_bleu2_max,
-        "M2_bleu2_rand": M2_bleu2_rand,
-        "M1_bleurt": M1_bleurt,
-        "M2_bleurt_max": M2_bleurt_max,
-        "M2_bleurt_rand": M2_bleurt_rand,
-        "M3_bleu2_max": M3_bleu2_max,
-        "M3_bleu2_rand": M3_bleu2_rand
-        }
+                M2_bleu2_max = max(M2_bleu2)
+                M2_bleu2_rand = sum(M2_bleu2)/float(len(M2_bleu2))
 
-        wandb.log(log_dict)
+                M2_bleurt_max = max(M2_bleurt)
+                M2_bleurt_rand = sum(M2_bleurt)/float(len(M2_bleurt))
 
-        for k, v in eng_back_translated_per:
-            log_dict.update({'Beam/'+str(k+1): v})
-        lock = FileLock(os.path.join(open(os.path.join('Results','Samples','UMT_'+ config['lang'] + '_' + str(config['num_beams']) + '_' + config['perturb'].__name__ +'.csv.lock'))
-        with lock:
-            with open(target_NL,'a') as f:
+                log_dict = {
+                "index": i,
+                "half" : half,
+                "len": len(nlp(eng_gold)),
+                "M1_bleu2": M1_bleu2,
+                "M2_bleu2_max": M2_bleu2_max,
+                "M2_bleu2_rand": M2_bleu2_rand,
+                "M1_bleurt": M1_bleurt,
+                "M2_bleurt_max": M2_bleurt_max,
+                "M2_bleurt_rand": M2_bleurt_rand,
+                "M3_bleu2_max": M3_bleu2_max,
+                "M3_bleu2_rand": M3_bleu2_rand
+                }
+
+                wandb.log(log_dict)
+
+                log_dict.update({'Gold English':eng_gold, 'English Perturbed': eng_perturbed})
+
+                for k, v in eng_back_translated_per.items():
+                    log_dict.update({'Beam/'+str(k+1): v})
+
                 writer_NL.writerow(log_dict)
 
 
@@ -192,7 +210,8 @@ def HyperEvaluate(config):
 if __name__ == '__main__':
 
     PARAM_GRID = list(product(
-    ['de'],#'fr','ru','ja'], #languages
+    [0,7000,14000], # starting_index
+    ['de', 'fr','ru','ja'], #languages
     [treeMirrorPre, treeMirrorPo, treeMirrorIn, verbAtBeginning, verbSwaps, adverbVerbSwap,
       nounVerbSwap, nounVerbMismatched, nounAdjSwap, shuffleHalvesFirst, shuffleHalvesLast,
       reversed, wordShuffle, rotateAroundRoot,functionalShuffle, nounSwaps, conjunctionShuffle],
@@ -207,14 +226,15 @@ if __name__ == '__main__':
         params = PARAM_GRID[param_ix]
 
 
-        lang, pert, b = params
+        s_ind, lang, pert, b = params
         config = {}
         config['lang'] = lang
         config['perturb'] = pert
         config['num_beams'] = b
+        config['i'] = s_ind
 
         h_param_list.append(config)
-
+    print(len(h_param_list))
     # run by submitit
     d = datetime.today()
     exp_dir = (
@@ -230,12 +250,12 @@ if __name__ == '__main__':
     workers_per_gpu = 10
     executor = submitit.AutoExecutor(folder=submitit_logdir)
     executor.update_parameters(
-        timeout_min=15,
+        timeout_min=1000,
         gpus_per_node=num_gpus,
         slurm_additional_parameters={"account": "rrg-bengioy-ad"},
         tasks_per_node=num_gpus,
         cpus_per_task=workers_per_gpu,
-        slurm_mem="32G",#16G
+        slurm_mem="16G",#16G
         slurm_array_parallelism=50,
     )
     job = executor.map_array(HyperEvaluate,h_param_list)

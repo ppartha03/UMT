@@ -12,6 +12,7 @@ import itertools
 import spacy
 import math
 import csv
+import json
 import wandb
 from itertools import product
 import sys
@@ -40,7 +41,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def HyperEvaluate(config):
     ext_language = config['lang']
     perturbation = config['perturb']
-    model = config['model']
+    model_ = config['model']
     batch_size = config['batch_size']
 
     nlp_o = spacy.load(ext_language+"_core_news_sm")
@@ -56,21 +57,21 @@ def HyperEvaluate(config):
 
     lines = test_file.readlines()
 
-    model = MarianMTModel.from_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-" + ext_language + "-model").cuda()
-    tokenizer = MarianTokenizer.from_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-" + ext_language).cuda()
+    model = MarianMTModel.from_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-" + ext_language + "-model").to(device)
+    tokenizer = MarianTokenizer.from_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-" + ext_language)
 
     # todo : Save samples in a csv : with metrics, perturbed example and beams
     # todo : ensure the beams have the same seed across runs and so do the perturbation functions. Use the index as seed value.
 
-    target_dir = os.path.join('Data', model, ext_language, perturbation.__name__)
+    target_dir = os.path.join('Data', model_, ext_language, perturbation.__name__)
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
 
     eng_gold_file =  open(os.path.join(target_dir, 'en.gold'), "r")
     eng_perturb_file = open(os.path.join(target_dir, 'en.perturb'), "r")
 
-    o_lang_gold_file = open(os.path.join(target_dir, ext_language + '.gold.translate'), "w")
-    o_lang_perturb_file = open(os.path.join(target_dir, ext_language + '.perturb.translate'), "w")
+    o_lang_gold_file = open(os.path.join(target_dir, 'en.gold.translate'), "w")
+    o_lang_perturb_file = open(os.path.join(target_dir, 'en.perturb.translate'), "w")
 
     eng_gold_sents = eng_gold_file.readlines()
     eng_perturb_sents = eng_perturb_file.readlines()
@@ -79,30 +80,37 @@ def HyperEvaluate(config):
 
     original_id = 0
     id_ = 0
+    lock = FileLock(os.path.join(target_dir, 'lock.l'))
 
     with lock:
         for i in range(0,len(eng_gold_sents), batch_size):
-            e_gold_batch = [eval(_) for _ in eng_gold_sents[i: i+batch_size]]
-            e_perturb_batch = [eval(_) for _ in eng_perturb_sents[i: i+batch_size]]
+            e_gold_batch = [json.loads(_) for _ in eng_gold_sents[i: i+batch_size]]
+            e_perturb_batch = [json.loads(_) for _ in eng_perturb_sents[i: i+batch_size]]
 
             eng_gold_batch = [_['text'] for _ in e_gold_batch]
             eng_perturb_batch = [_['text'] for _ in e_perturb_batch]
 
-            batch_gold = tok.prepare_seq2seq_batch(src_texts=eng_gold_batch, return_tensors="pt")
-            batch_perturb = tok.prepare_seq2seq_batch(src_texts=eng_perturb_batch, return_tensors="pt")
+            batch_gold = tokenizer.prepare_seq2seq_batch(src_texts=eng_gold_batch, return_tensors="pt").to(device)
+            batch_perturb = tokenizer.prepare_seq2seq_batch(src_texts=eng_perturb_batch, return_tensors="pt").to(device)
 
             gen = model.generate(**batch_gold)
-            translate_gold = tok.batch_decode(gen, skip_special_tokens=True)
+            translate_gold = tokenizer.batch_decode(gen, skip_special_tokens=True)
 
             gen = model.generate(**batch_perturb)
-            translate_perturb = tok.batch_decode(gen, skip_special_tokens=True)
+            translate_perturb = tokenizer.batch_decode(gen, skip_special_tokens=True)
 
-            for k in e_gold_batch:
+            for k in range(len(e_gold_batch)):
                 original_id = e_gold_batch[k]['original_id']
                 id_ = e_gold_batch[k]['id']
 
-                o_lang_perturb_file.write('{ ' + '\"original_id\": ' + str(original_id) + ', \"id\": ' + str(id_) + ',\"text\": \"' + translate_perturb[k] + '\"}\n')
-                o_lang_gold_file.write('{ ' + '\"original_id\": ' + str(original_id) + ', \"id\": ' + str(id_) + ',\"text\": \"' + translate_gold[k] + '\"}\n')
+                d = {"original_id": original_id, "id": id_, "text": translate_perturb[k]}
+                d_f = json.dumps(d)
+                o_lang_perturb_file.write(d_f + '\n')
+
+                d = {"original_id": original_id, "id": id_, "text": translate_gold[k]}
+                d_f = json.dumps(d)
+                o_lang_gold_file.write(d_f + '\n')
+                
 
     o_lang_gold_file.close()
     eng_gold_file.close()
@@ -133,6 +141,7 @@ if __name__ == '__main__':
         config['lang'] = lang
         config['perturb'] = pert
         config['model'] = model
+        config['batch_size'] = 128
 
         h_param_list.append(config)
 
@@ -151,7 +160,7 @@ if __name__ == '__main__':
     workers_per_gpu = 10
     executor = submitit.AutoExecutor(folder=submitit_logdir)
     executor.update_parameters(
-        timeout_min=120,
+        timeout_min=30,
         gpus_per_node=num_gpus,
         slurm_additional_parameters={"account": "rrg-bengioy-ad"},
         tasks_per_node=num_gpus,

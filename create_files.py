@@ -86,19 +86,19 @@ def HyperEvaluate(config):
                 eng_perturbed = perturbation(eng_gold, nlp = nlp)
                 other_lang_perturbed = perturbation(other_lang_gold, nlp = nlp_o)
 
-                d = {"original_id": original_id, "id", id_, "text": eng_gold}
+                d = {"original_id": original_id, "id": id_, "text": eng_gold}
                 d_f = json.dumps(d)
                 eng_gold_file.write(d_f + '\n')
 
-                d = {"original_id": original_id, "id", id_, "text": other_lang_gold}
+                d = {"original_id": original_id, "id": id_, "text": other_lang_gold}
                 d_f = json.dumps(d)
                 o_lang_gold_file.write(d_f + '\n')
 
-                d = {"original_id": original_id, "id", id_, "text": eng_perturbed}
+                d = {"original_id": original_id, "id": id_, "text": eng_perturbed}
                 d_f = json.dumps(d)
                 eng_perturb_file.write(d_f + '\n')
 
-                d = {"original_id": original_id, "id", id_, "text": other_lang_perturbed}
+                d = {"original_id": original_id, "id": id_, "text": other_lang_perturbed}
                 d_f = json.dumps(d)
                 o_lang_perturb_file.write(d_f + '\n')
 

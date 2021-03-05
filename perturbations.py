@@ -22,6 +22,12 @@ def treeMirrorPre(in_str, p = 0, nlp = None):
             self.left = vals
 
     toks = nlp(in_str)
+
+    s_l = [_ for _ in toks]
+    assert len(s_l) > 5
+
+    if toks[-1].pos_ != 'PUNCT':
+      toks = nlp(in_str + ' .')
     out_sent = ''
     for sent in toks.sents:
       root = None
@@ -31,10 +37,9 @@ def treeMirrorPre(in_str, p = 0, nlp = None):
       for t in sent:
         node_dict[t.i] = node(t)
 
-      count = {}
       last = None
       for t in sent:
-        if str(t) not in ['.','!','?']:
+        if str(t) not in ['.',':','...','!','?',';']:
           n_ = node_dict[t.i]
           n_right = [node_dict[_.i] for _ in t.rights]
           n_left = [node_dict[_.i] for _ in t.lefts]
@@ -88,6 +93,11 @@ def treeMirrorPo(in_str, p = 0, nlp = None):
             self.left = vals
 
     toks = nlp(in_str)
+    s_l = [_ for _ in toks]
+    assert len(s_l) > 5
+
+    if toks[-1].pos_ != 'PUNCT':
+      toks = nlp(in_str + ' .')
     out_sent = ''
     for sent in toks.sents:
       root = None
@@ -100,7 +110,7 @@ def treeMirrorPo(in_str, p = 0, nlp = None):
       count = {}
       last = None
       for t in sent:
-        if str(t) not in ['.','!','?']:
+        if str(t) not in ['.','!','?',';']:
           n_ = node_dict[t.i]
           n_right = [node_dict[_.i] for _ in t.rights]
           n_left = [node_dict[_.i] for _ in t.lefts]
@@ -155,6 +165,13 @@ def treeMirrorIn(in_str, p = 0, nlp = None):
             self.left = vals
 
     toks = nlp(in_str)
+
+    s_l = [_ for _ in toks]
+    assert len(s_l) > 5
+
+    if toks[-1].pos_ != 'PUNCT':
+      toks = nlp(in_str + ' .')
+
     out_sent = ''
     for sent in toks.sents:
       root = None
@@ -167,7 +184,7 @@ def treeMirrorIn(in_str, p = 0, nlp = None):
       count = {}
       last = None
       for t in sent:
-        if str(t) not in ['.','!','?']:
+        if str(t) not in ['.','!','?',';']:
           n_ = node_dict[t.i]
           n_right = [node_dict[_.i] for _ in t.rights]
           n_left = [node_dict[_.i] for _ in t.lefts]
@@ -204,6 +221,11 @@ def treeMirrorIn(in_str, p = 0, nlp = None):
 
 def rotateAroundRoot(in_str, nlp = None):
     toks = nlp(in_str)
+    s_l = [_ for _ in toks]
+    assert len(s_l) > 5
+
+    if toks[-1].pos_ != 'PUNCT':
+      toks = nlp(in_str + ' .')
     root_ind = None
     final = []
     len_sent = 0
@@ -229,11 +251,21 @@ def injectNonce():
 
 def reversed(in_str, nlp = None):
   toks = nlp(in_str)
+  s_l = [_ for _ in toks]
+  assert len(s_l) > 5
+
+  if toks[-1].pos_ != 'PUNCT':
+    toks = nlp(in_str + ' .')
   out_str = [str(toks[_]) for _ in range(len(toks)-2,-1,-1)] + [str(toks[-1])]
   return ' '.join(out_str)
 
 def functionalShuffle(in_str, func_ = ['DET','ADP'], nlp = None):
   toks = nlp(in_str)
+  s_l = [_ for _ in toks]
+  assert len(s_l) > 5
+
+  if toks[-1].pos_ != 'PUNCT':
+    toks = nlp(in_str + ' .')
   func = []
   out_str = []
   for t in toks:
@@ -252,15 +284,27 @@ def functionalShuffle(in_str, func_ = ['DET','ADP'], nlp = None):
 
 def nounVerbMismatched(in_str, nlp = None):
     toks = nlp(in_str)
+    s_l = [_ for _ in toks]
+    assert len(s_l) > 5
+
+    if toks[-1].pos_ != 'PUNCT':
+      toks = nlp(in_str + ' .')
     verb_stack = []
     noun_stack = []
     out_str = ['' for _ in range(len(toks))]
     untouch = ['' for _ in range(len(toks))]
+    flag = True
     for t in toks:
         if t.pos_ == 'VERB':
             verb_stack.append(t)
-    for np in toks.noun_chunks:
-        noun_stack.append(np)
+    try:
+        for np in toks.noun_chunks:
+            noun_stack.append(np)
+    except:
+        flag = False
+        for t in toks:
+            if t.pos_ in ['NOUN','PRON']:
+              noun_stack.append(t)
 
     assert len(noun_stack) >= 1 and len(verb_stack) >= 1
 
@@ -270,9 +314,14 @@ def nounVerbMismatched(in_str, nlp = None):
         n_split = str(last_noun).split()
 
         out_str[last_verb.i] = str(last_noun)
-        out_str[last_noun.start] = str(last_verb)
+        if flag:
+          out_str[last_noun.start] = str(last_verb)
+          untouch[last_noun.start]  = str(last_noun)
+        else:
+          out_str[last_noun.i] = str(last_verb)
+          untouch[last_noun.i]  = str(last_noun)
 
-        untouch[last_noun.start]  = str(last_noun)
+
         untouch[last_verb.i] = str(last_verb)
 
     if len(verb_stack):
@@ -281,8 +330,13 @@ def nounVerbMismatched(in_str, nlp = None):
         untouch[t.i] = str(t)
     if len(noun_stack):
       for t in noun_stack:
-        out_str[t.start] = str(t)
-        untouch[t.start] = str(t)
+        if flag:
+          out_str[t.start] = str(t)
+          untouch[t.start] = str(t)
+        else:
+          out_str[t.i] = str(t)
+          untouch[t.i] = str(t)
+
     i=0
     while i <len(toks):
       if untouch[i] == '':
@@ -296,6 +350,11 @@ def nounVerbMismatched(in_str, nlp = None):
 
 def adverbVerbSwap(in_str, nlp = None):
     toks = nlp(in_str)
+    s_l = [_ for _ in toks]
+    assert len(s_l) > 5
+
+    if toks[-1].pos_ != 'PUNCT':
+      toks = nlp(in_str + ' .')
     verb_stack = []
     adverb_stack = []
     out_str = ['' for _ in range(len(toks))]
@@ -330,6 +389,11 @@ def adverbVerbSwap(in_str, nlp = None):
 
 def nounAdjSwap(in_str, nlp = None):
     toks = nlp(in_str)
+    s_l = [_ for _ in toks]
+    assert len(s_l) > 5
+
+    if toks[-1].pos_ != 'PUNCT':
+      toks = nlp(in_str + ' .')
     noun_stack = []
     adj_stack = []
     out_str = ['' for _ in range(len(toks))]
@@ -337,7 +401,7 @@ def nounAdjSwap(in_str, nlp = None):
     for t in toks:
         if t.pos_ == 'ADJ':
             adj_stack.append(t)
-        if t.pos_ == 'NOUN':
+        if t.pos_ in ['NOUN','PRON']:
           noun_stack.append(t)
 
     assert len(noun_stack) >= 1 and len(adj_stack) >= 1
@@ -365,15 +429,27 @@ def nounAdjSwap(in_str, nlp = None):
 
 def nounVerbSwap(in_str, nlp = None):
     toks = nlp(in_str)
+    s_l = [_ for _ in toks]
+    assert len(s_l) > 5
+
+    if toks[-1].pos_ != 'PUNCT':
+      toks = nlp(in_str + ' .')
     verb_stack = []
     noun_stack = []
     out_str = ['' for _ in range(len(toks))]
     untouch = ['' for _ in range(len(toks))]
+    flag = True
     for t in toks:
         if t.pos_ in ['VERB','AUX']:
             verb_stack.append(t)
-    for np in toks.noun_chunks:
-        noun_stack.append(np)
+    try:
+        for np in toks.noun_chunks:
+            noun_stack.append(np)
+    except:
+        flag = False
+        for t in toks:
+            if t.pos_ in ['NOUN','PRON']:
+              noun_stack.append(t)
 
     assert len(noun_stack) >= 1 and len(verb_stack) >= 1
 
@@ -383,9 +459,14 @@ def nounVerbSwap(in_str, nlp = None):
         n_split = str(last_noun).split()
 
         out_str[last_verb.i] = str(last_noun)
-        out_str[last_noun.start] = str(last_verb)
+        if flag:
+          out_str[last_noun.start] = str(last_verb)
+          untouch[last_noun.start]  = str(last_noun)
+        else:
+          out_str[last_noun.i] = str(last_verb)
+          untouch[last_noun.i]  = str(last_noun)
 
-        untouch[last_noun.start]  = str(last_noun)
+
         untouch[last_verb.i] = str(last_verb)
 
     if len(verb_stack):
@@ -394,8 +475,12 @@ def nounVerbSwap(in_str, nlp = None):
         untouch[t.i] = str(t)
     if len(noun_stack):
       for t in noun_stack:
-        out_str[t.start] = str(t)
-        untouch[t.start] = str(t)
+        if flag:
+          out_str[t.start] = str(t)
+          untouch[t.start] = str(t)
+        else:
+          out_str[t.i] = str(t)
+          untouch[t.i] = str(t)
     i=0
     while i <len(toks):
       if untouch[i] == '':
@@ -410,13 +495,18 @@ def nounVerbSwap(in_str, nlp = None):
 
 def verbSwaps(in_str, nlp = None):
     toks = nlp(in_str)
+    s_l = [_ for _ in toks]
+    assert len(s_l) > 5
+
+    if toks[-1].pos_ != 'PUNCT':
+      toks = nlp(in_str + ' .')
     verbs = []
     out_str = []
     for t in toks:
         if t.pos_ in ['VERB','AUX']:
             verbs+=[str(t)]
 
-    verb_test = list(set(verb_stack))
+    verb_test = list(set(verbs))
     assert len(verb_test) > 1
 
     random.shuffle(verbs)
@@ -432,12 +522,25 @@ def verbSwaps(in_str, nlp = None):
 
 
 def wordShuffle(in_str, nlp = None):
-    str_l = [str(_) for _ in nlp(in_str)]
+    toks = nlp(in_str)
+
+    if toks[-1].pos_ != 'PUNCT':
+      toks = nlp(in_str + ' .')
+    str_l = [str(_) for _ in toks]
+
+    assert len(str_l) > 5
+
     random.shuffle(str_l[:-1])
     return ' '.join(str_l) + ' ' + str(str_l[-1])
 
 def shuffleHalvesFirst(in_str, nlp = None):
-    str_l = [str(_) for _ in nlp(in_str)]
+    toks = nlp(in_str)
+    if toks[-1].pos_ != 'PUNCT':
+      toks = nlp(in_str + ' .')
+
+    str_l = [str(_) for _ in toks]
+
+    assert len(str_l) > 5
 
     first_half = str_l[:len(str_l)//2]
 
@@ -448,7 +551,13 @@ def shuffleHalvesFirst(in_str, nlp = None):
     return out_str
 
 def shuffleHalvesLast(in_str, nlp = None):
-    str_l = [str(_) for _ in nlp(in_str)]
+    toks = nlp(in_str)
+    if toks[-1].pos_ != 'PUNCT':
+      toks = nlp(in_str + ' .')
+
+    str_l = [str(_) for _ in toks]
+
+    assert len(str_l) > 5
     random.seed(len(str_l))
     second_half = str_l[len(str_l)//2:-1]
 
@@ -460,11 +569,16 @@ def shuffleHalvesLast(in_str, nlp = None):
 
 def verbAtBeginning(in_str, nlp = None):
   toks = nlp(in_str)
+  if toks[-1].pos_ != 'PUNCT':
+    toks = nlp(in_str + ' .')
   out_str = []
   flag = True
+
   for sent in toks.sents:
     flag = True
     temp_str = []
+    pos = [t.pos_ for t in sent]
+    assert 'VERB' in pos
     for t in sent:
         if flag:
             if t.pos_ == 'VERB':
@@ -472,17 +586,26 @@ def verbAtBeginning(in_str, nlp = None):
                 flag == False
                 continue
         temp_str += [str(t)]
-    assert flag == False
     out_str.append(' '.join(temp_str))
   return ' '.join(out_str)
 
 def nounSwaps(in_str, nlp = None):
   toks = nlp(in_str)
+  if toks[-1].pos_ != 'PUNCT':
+    toks = nlp(in_str + ' .')
   noun_stack = []
   out_str = ['' for _ in range(len(toks))]
   untouch = ['' for _ in range(len(toks))]
-  for np in toks.noun_chunks:
-      noun_stack.append(np)
+
+  flag = True
+  try:
+      for np in toks.noun_chunks:
+          noun_stack.append(np)
+  except:
+      flag = False
+      for t in toks:
+          if t.pos_ in ['NOUN','PRON']:
+            noun_stack.append(t)
 
   ns_test = list(set(noun_stack))
   assert len(ns_test) > 1
@@ -494,9 +617,13 @@ def nounSwaps(in_str, nlp = None):
     noun_mis = noun_stack.pop(0)
     noun_real = unshuffled.pop(0)
 
-    out_str[noun_real.start] = str(noun_mis)
+    if flag:
+      out_str[noun_real.start] = str(noun_mis)
+      untouch[noun_real.start]  = str(noun_real)
+    else:
+      out_str[noun_real.i] = str(noun_mis)
+      untouch[noun_real.i]  = str(noun_real)
 
-    untouch[noun_real.start]  = str(noun_real)
   i=0
   while i <len(toks):
     if untouch[i] == '':
@@ -511,12 +638,13 @@ def nounSwaps(in_str, nlp = None):
 
 def conjunctionShuffle(in_str, nlp = None):
   toks = nlp(in_str)
+  if toks[-1].pos_ != 'PUNCT':
+    toks = nlp(in_str + ' .')
   conjs = []
   out_str = []
   for t in toks:
       if 'CONJ' in str(t.pos_):
           conjs+=[str(t)]
-
   assert len(conjs) > 1
 
   for t in toks:
