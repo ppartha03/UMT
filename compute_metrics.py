@@ -159,6 +159,8 @@ if __name__ == '__main__':
     PARAM_GRID = list(product(
     ['Helsinki-opus'], #model
     ['de','fr','ru','ja'], #languages
+    ['bleu','levenshtein'], #metric
+    [2,3,4], #bleu-n
     [treeMirrorPre, treeMirrorPo, treeMirrorIn, verbSwaps, adverbVerbSwap, verbAtBeginning,
       nounVerbSwap, nounVerbMismatched, nounAdjSwap, shuffleHalvesFirst, shuffleHalvesLast,
       reversed, wordShuffle, rotateAroundRoot,functionalShuffle, nounSwaps, conjunctionShuffle]
@@ -171,15 +173,21 @@ if __name__ == '__main__':
 
         params = PARAM_GRID[param_ix]
 
-        model, lang, pert = params
+        model, lang, metric, bleu_n, pert = params
         config = {}
         config['lang'] = lang
         config['perturb'] = pert
         config['model'] = model
-        config['batch_size'] = 128
+        config['metric'] = metric
+        config['bleu_n'] = None
 
-        h_param_list.append(config)
+        if config['metric'] == 'bleu':
+            config['bleu-n'] = bleu_n
 
+        if config not in h_param_list:
+            h_param_list.append(config)
+
+    print(len(h_param_list))
     # run by submitit
     d = datetime.today()
     exp_dir = (
