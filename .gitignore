@@ -6,3 +6,6 @@ wandb/
 *.DS_Store*
 core.*
 Data/
+Human/
+Metrics/
+*.zip

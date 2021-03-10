@@ -94,7 +94,7 @@ def HyperEvaluate(config):
                  "original_id": original_id,
                  "id": id_,
                  "perturb_id": perturb_id,
-                 "English Perturbed": en_perturb,
+                 "English Perturbed": en_perturb['text'],
                  "English Fixed": ''
                  }
 
@@ -102,8 +102,8 @@ def HyperEvaluate(config):
                  "original_id": original_id,
                  "id": id_,
                  "perturb_id": perturb_id,
-                 "English Perturbed": en_perturb,
-                 "English Fixed": en_gold
+                 "English Perturbed": en_perturb['text'],
+                 "English Fixed": en_gold['text']
                  }
 
             writer_NL_eval.writerow(d_eval)
@@ -134,7 +134,7 @@ if __name__ == '__main__':
 
         params = PARAM_GRID[param_ix]
 
-        model, lang, metric, bleu_n, pert = params
+        model, lang, pert = params
         config = {}
         config['lang'] = lang
         config['perturb'] = pert

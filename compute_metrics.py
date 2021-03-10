@@ -53,7 +53,10 @@ def HyperEvaluate(config):
         metric_name = config['metric']+'-'+str(config['n'])
         weights = tuple([1./config['n']]*config['n'])
 
-    nlp_o = spacy.load(ext_language+"_core_news_sm")
+    try:
+        nlp_o = spacy.load(ext_language+"_core_news_sm")
+    except:
+        nlp_o = spacy.load(ext_language+"_core_web_sm")
     nlp = spacy.load("en_core_web_sm")
 
     perturbations = [treeMirrorPre, treeMirrorPo, treeMirrorIn, verbAtBeginning, verbSwaps, adverbVerbSwap,
@@ -61,10 +64,6 @@ def HyperEvaluate(config):
       reversed, wordShuffle, rotateAroundRoot,functionalShuffle, nounSwaps, conjunctionShuffle]
 
     assert perturbation in perturbations
-
-    test_file = open('test_data/opus-'+ext_language+'-en.test.txt')
-
-    lines = test_file.readlines()
 
     # todo : Save samples in a csv : with metrics, perturbed example and beams
     # todo : ensure the beams have the same seed across runs and so do the perturbation functions. Use the index as seed value.
@@ -157,7 +156,7 @@ if __name__ == '__main__':
 
     PARAM_GRID = list(product(
     ['Helsinki-opus'], #model
-    ['de','fr','ru','ja'], #languages
+    ['it', 'zh', 'es'], #languages
     ['bleu','levenshtein'], #metric
     [2,3,4], #bleu-n
     [treeMirrorPre, treeMirrorPo, treeMirrorIn, verbSwaps, adverbVerbSwap, verbAtBeginning,
@@ -202,12 +201,12 @@ if __name__ == '__main__':
     workers_per_gpu = 10
     executor = submitit.AutoExecutor(folder=submitit_logdir)
     executor.update_parameters(
-        timeout_min=30,
+        timeout_min=60,
         gpus_per_node=num_gpus,
         slurm_additional_parameters={"account": "rrg-bengioy-ad"},
         tasks_per_node=num_gpus,
         cpus_per_task=workers_per_gpu,
-        slurm_mem="16G",#16G
+        slurm_mem="32G",#16G
         slurm_array_parallelism=100,
     )
     job = executor.map_array(HyperEvaluate,h_param_list)

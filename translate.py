@@ -44,7 +44,10 @@ def HyperEvaluate(config):
     model_ = config['model']
     batch_size = config['batch_size']
 
-    nlp_o = spacy.load(ext_language+"_core_news_sm")
+    try:
+        nlp_o = spacy.load(ext_language+"_core_news_sm")
+    except:
+        nlp_o = spacy.load(ext_language+"_core_web_sm")
     nlp = spacy.load("en_core_web_sm")
 
     perturbations = [treeMirrorPre, treeMirrorPo, treeMirrorIn, verbAtBeginning, verbSwaps, adverbVerbSwap,
@@ -52,10 +55,6 @@ def HyperEvaluate(config):
       reversed, wordShuffle, rotateAroundRoot,functionalShuffle, nounSwaps, conjunctionShuffle]
 
     assert perturbation in perturbations
-
-    test_file = open('test_data/opus-'+ext_language+'-en.test.txt')
-
-    lines = test_file.readlines()
 
     model = MarianMTModel.from_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-" + ext_language + "-model").to(device)
     tokenizer = MarianTokenizer.from_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-" + ext_language)
@@ -110,7 +109,7 @@ def HyperEvaluate(config):
                 d = {"original_id": original_id, "id": id_, "text": translate_gold[k]}
                 d_f = json.dumps(d)
                 o_lang_gold_file.write(d_f + '\n')
-                
+
 
     o_lang_gold_file.close()
     eng_gold_file.close()
@@ -123,7 +122,7 @@ if __name__ == '__main__':
 
     PARAM_GRID = list(product(
     ['Helsinki-opus'], #model
-    ['de','fr','ru','ja'], #languages
+    ['zh'],#['de','fr','ru','ja'], #languages
     [treeMirrorPre, treeMirrorPo, treeMirrorIn, verbSwaps, adverbVerbSwap, verbAtBeginning,
       nounVerbSwap, nounVerbMismatched, nounAdjSwap, shuffleHalvesFirst, shuffleHalvesLast,
       reversed, wordShuffle, rotateAroundRoot,functionalShuffle, nounSwaps, conjunctionShuffle]
@@ -141,7 +140,7 @@ if __name__ == '__main__':
         config['lang'] = lang
         config['perturb'] = pert
         config['model'] = model
-        config['batch_size'] = 128
+        config['batch_size'] = 32
 
         h_param_list.append(config)
 
@@ -160,12 +159,12 @@ if __name__ == '__main__':
     workers_per_gpu = 10
     executor = submitit.AutoExecutor(folder=submitit_logdir)
     executor.update_parameters(
-        timeout_min=30,
+        timeout_min=180,
         gpus_per_node=num_gpus,
         slurm_additional_parameters={"account": "rrg-bengioy-ad"},
         tasks_per_node=num_gpus,
         cpus_per_task=workers_per_gpu,
-        slurm_mem="16G",#16G
+        slurm_mem="32G",#16G
         slurm_array_parallelism=100,
     )
     job = executor.map_array(HyperEvaluate,h_param_list)

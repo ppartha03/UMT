@@ -24,8 +24,7 @@ import time
 
 from perturbations import *
 
-os.environ["WANDB_API_KEY"] = '829432a2360cc623158d30f47c37fe11d3e12d57'
-os.environ["WANDB_MODE"] = "dryrun"
+from datasets import load_dataset
 
 # commandline arguments
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -54,10 +53,6 @@ def HyperEvaluate(config):
 
     assert perturbation in perturbations
 
-    test_file = open('test_data/Helsinki-opus-20/opus-'+ext_language+'-en.test.txt')
-
-    lines = test_file.readlines()
-
     # todo : Save samples in a csv : with metrics, perturbed example and beams
     # todo : ensure the beams have the same seed across runs and so do the perturbation functions. Use the index as seed value.
 
@@ -80,11 +75,12 @@ def HyperEvaluate(config):
     original_id = 0
     id_ = 0
 
+    dataset = load_dataset(model, ext_language+'-en', split = 'validation')
     with lock:
-        for i in range(0,len(lines),4):
+        for i in range(len(dataset)):
             try:
-                other_lang_gold = lines[i].strip()
-                eng_gold = lines[i+1].strip()
+                other_lang_gold = dataset['translation'][ext_language]
+                eng_gold = dataset['translation']['en']
 
                 eng_perturbed = perturbation(eng_gold, nlp = nlp)
                 other_lang_perturbed = perturbation(other_lang_gold, nlp = nlp_o)
@@ -133,8 +129,8 @@ def HyperEvaluate(config):
 if __name__ == '__main__':
 
     PARAM_GRID = list(product(
-    ['Helsinki-opus'], #model
-    ['es','zh'], #languages#[verbAtBeginning] [it, de, ja, ru]
+    ['wmt19', 'wmt18'], #model
+    ['de', 'lt', 'ru', 'zh'], #languages#[verbAtBeginning] in wmt18 ['de', 'ru', 'zh']
     [treeMirrorPre, treeMirrorPo, treeMirrorIn, verbSwaps, adverbVerbSwap, verbAtBeginning,
       nounVerbSwap, nounVerbMismatched, nounAdjSwap, shuffleHalvesFirst, shuffleHalvesLast,
       reversed, wordShuffle, rotateAroundRoot,functionalShuffle, nounSwaps, conjunctionShuffle],

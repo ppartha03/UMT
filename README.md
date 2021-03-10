@@ -1,13 +1,37 @@
 # UMT
 
+## Colab
+There is an interactive version available in [colab](https://colab.research.google.com/drive/1tIoFzz7oZGdr5abJofWGV-6SsRWpSTsC?usp=sharing) to play around with the functions.
+
+## Using the NMT models
+
+If running in compute-canada clusters, download the models below from the launch machine.
+
 ```
-git clone https://github.com/ppartha03/UMT.git
-cd UMT
-mkdir test_data
-cd test_data
-wget https://www.dropbox.com/s/et14qiqu8nudaih/MT-datasets-UMT.zip
-unzip MT-datasets-UMT.zip
+config = AutoConfig.from_pretrained("Helsinki-NLP/opus-mt-en-zh")
+tokenizer = AutoTokenizer.from_pretrained("Helsinki-NLP/opus-mt-en-zh")
+model = AutoModelForSeq2SeqLM.from_pretrained("Helsinki-NLP/opus-mt-en-zh")
+
+tokenizer.save_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-zh")
+config.save_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-zh")
+model.save_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-zh-model")
 ```
 
-## Colab
-There is an interactive version available in [colab](https://colab.research.google.com/drive/1tIoFzz7oZGdr5abJofWGV-6SsRWpSTsC?usp=sharing) to play around with the functions. 
+## Create the files:
+
+`python datasets_preprocess.py`
+
+For sanity check, open `Data/<model>/<lang>/stats.txt` and that should show the fraction of samples used by the different perturbations. If none of them are zero, then the create files works well.
+
+
+## Run the translate:
+
+Set the model and lang to generate the translations. If the GPU memory is < 32G, opt for a lower batch-size.
+
+`python translate.py` should get the results.
+
+## Compute Metrics:
+
+Set the model and lang to generate the translations. If the GPU memory is < 32G, opt for a lower batch-size.
+
+`python compute_metrics.py` should get the results in `Metrics\` in root.
