@@ -25,9 +25,6 @@ import time
 
 from perturbations import *
 
-os.environ["WANDB_API_KEY"] = '829432a2360cc623158d30f47c37fe11d3e12d57'
-os.environ["WANDB_MODE"] = "dryrun"
-
 # commandline arguments
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -155,8 +152,8 @@ def HyperEvaluate(config):
 if __name__ == '__main__':
 
     PARAM_GRID = list(product(
-    ['Helsinki-opus'], #model
-    ['it', 'zh', 'es'], #languages
+    ['wmt19'], #model For wmt18 ['de', 'ru', 'zh']
+    ['de', 'lt', 'ru', 'zh'], #languages
     ['bleu','levenshtein'], #metric
     [2,3,4], #bleu-n
     [treeMirrorPre, treeMirrorPo, treeMirrorIn, verbSwaps, adverbVerbSwap, verbAtBeginning,
