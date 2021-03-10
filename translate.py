@@ -121,8 +121,8 @@ def HyperEvaluate(config):
 if __name__ == '__main__':
 
     PARAM_GRID = list(product(
-    ['Helsinki-opus'], #model
-    ['zh'],#['de','fr','ru','ja'], #languages
+    ['wmt19'], #model wmt18 ['de', 'ru', 'zh']
+    ['de', 'lt' , 'ru', 'zh'],#['de','fr','ru','ja'], #languages
     [treeMirrorPre, treeMirrorPo, treeMirrorIn, verbSwaps, adverbVerbSwap, verbAtBeginning,
       nounVerbSwap, nounVerbMismatched, nounAdjSwap, shuffleHalvesFirst, shuffleHalvesLast,
       reversed, wordShuffle, rotateAroundRoot,functionalShuffle, nounSwaps, conjunctionShuffle]

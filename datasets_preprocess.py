@@ -70,12 +70,12 @@ def HyperEvaluate(config):
 
     counter_file = open(os.path.join('Data', model, ext_language,'stats.txt'),'a')
 
-    this_perturbation = total_sentences = len(lines) // 4
-
     original_id = 0
     id_ = 0
 
     dataset = load_dataset(model, ext_language+'-en', split = 'validation')
+
+    this_perturbation = total_sentences = len(dataset) // 4
     with lock:
         for i in range(len(dataset)):
             try:
@@ -129,8 +129,8 @@ def HyperEvaluate(config):
 if __name__ == '__main__':
 
     PARAM_GRID = list(product(
-    ['wmt19', 'wmt18'], #model
-    ['de', 'lt', 'ru', 'zh'], #languages#[verbAtBeginning] in wmt18 ['de', 'ru', 'zh']
+    ['wmt19'], #model For wmt18 ['de', 'ru', 'zh']
+    ['de', 'lt', 'ru', 'zh'], #languages#[verbAtBeginning] 
     [treeMirrorPre, treeMirrorPo, treeMirrorIn, verbSwaps, adverbVerbSwap, verbAtBeginning,
       nounVerbSwap, nounVerbMismatched, nounAdjSwap, shuffleHalvesFirst, shuffleHalvesLast,
       reversed, wordShuffle, rotateAroundRoot,functionalShuffle, nounSwaps, conjunctionShuffle],
