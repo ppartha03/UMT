@@ -87,8 +87,8 @@ def HyperEvaluate(config):
             e_gold_batch = [json.loads(_) for _ in eng_gold_sents[i: i+batch_size]]
             e_perturb_batch = [json.loads(_) for _ in eng_perturb_sents[i: i+batch_size]]
 
-            eng_gold_batch = [_['text'] for _ in e_gold_batch]
-            eng_perturb_batch = [_['text'] for _ in e_perturb_batch]
+            eng_gold_batch = [_['text'].strip() for _ in e_gold_batch]
+            eng_perturb_batch = [_['text'].strip() for _ in e_perturb_batch]
 
             batch_gold = tokenizer.prepare_seq2seq_batch(src_texts=eng_gold_batch, return_tensors="pt").to(device)
             batch_perturb = tokenizer.prepare_seq2seq_batch(src_texts=eng_perturb_batch, return_tensors="pt").to(device)
@@ -110,7 +110,7 @@ def HyperEvaluate(config):
                 d = {"original_id": original_id, "id": id_, "text": translate_gold[k]}
                 d_f = json.dumps(d)
                 o_lang_gold_file.write(d_f + '\n')
-                
+
 
     o_lang_gold_file.close()
     eng_gold_file.close()

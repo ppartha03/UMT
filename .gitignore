@@ -6,3 +6,8 @@ wandb/
 *.DS_Store*
 core.*
 Data/
+*.png
+*.zip
+*.csv
+*.ipynb
+Metrics/

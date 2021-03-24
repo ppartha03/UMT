@@ -546,7 +546,7 @@ def shuffleHalvesFirst(in_str, nlp = None):
 
     random.shuffle(first_half)
 
-    out_str = ' '.join(first_half) + ' '.join(str_l[len(str_l)//2:])
+    out_str = ' '.join(first_half) + ' ' + ' '.join(str_l[len(str_l)//2:])
 
     return out_str
 
@@ -563,7 +563,7 @@ def shuffleHalvesLast(in_str, nlp = None):
 
     random.shuffle(second_half)
 
-    out_str = ' '.join(str_l[:len(str_l)//2]) + ' '.join(second_half) + str_l[-1]
+    out_str = ' '.join(str_l[:len(str_l)//2]) + ' ' + ' '.join(second_half) + str_l[-1]
 
     return out_str
 

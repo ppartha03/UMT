@@ -118,15 +118,15 @@ def HyperEvaluate(config):
             original_id = o_lang_gold['original_id']
             id_ = o_lang_gold['id']
 
-            alpha_e = metric([str(_) for _ in nlp(en_gold['text'])], [str(_) for _ in nlp(en_perturb['text'])], weights = weights)
-            alpha_o = metric([str(_) for _ in nlp_o(o_lang_gold['text'])], [str(_) for _ in nlp_o(o_lang_perturb['text'])], weights = weights)
-            beta = metric([str(_) for _ in nlp_o(en_gold_translate['text'])], [str(_) for _ in nlp_o(o_lang_gold['text'])], weights = weights)
+            alpha_e = metric([str(_) for _ in nlp(en_gold['text'].strip())], [str(_) for _ in nlp(en_perturb['text'].strip())], weights = weights)
+            alpha_o = metric([str(_) for _ in nlp_o(o_lang_gold['text'].strip())], [str(_) for _ in nlp_o(o_lang_perturb['text'].strip())], weights = weights)
+            beta = metric([str(_) for _ in nlp_o(en_gold_translate['text'].strip())], [str(_) for _ in nlp_o(o_lang_gold['text'].strip())], weights = weights)
 
-            beta1 = metric([str(_) for _ in nlp_o(en_perturb_translate['text'])], [str(_) for _ in nlp_o(o_lang_gold['text'])], weights = weights)
-            beta2 = metric([str(_) for _ in nlp_o(en_perturb_translate['text'])], [str(_) for _ in nlp_o(o_lang_perturb['text'])], weights = weights)
+            beta1 = metric([str(_) for _ in nlp_o(en_perturb_translate['text'].strip())], [str(_) for _ in nlp_o(o_lang_gold['text'].strip())], weights = weights)
+            beta2 = metric([str(_) for _ in nlp_o(en_perturb_translate['text'].strip())], [str(_) for _ in nlp_o(o_lang_perturb['text'].strip())], weights = weights)
 
-            en_len = len([str(_) for _ in nlp(en_gold['text'])])
-            o_len = len([str(_) for _ in nlp(o_lang_gold['text'])])
+            en_len = len([str(_) for _ in nlp(en_gold['text'].strip())])
+            o_len = len([str(_) for _ in nlp(o_lang_gold['text'].strip())])
 
             d = {
                  "original_id": original_id,
@@ -203,7 +203,7 @@ if __name__ == '__main__':
     workers_per_gpu = 10
     executor = submitit.AutoExecutor(folder=submitit_logdir)
     executor.update_parameters(
-        timeout_min=30,
+        timeout_min=120,
         gpus_per_node=num_gpus,
         slurm_additional_parameters={"account": "rrg-bengioy-ad"},
         tasks_per_node=num_gpus,

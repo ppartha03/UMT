@@ -134,7 +134,7 @@ if __name__ == '__main__':
 
         params = PARAM_GRID[param_ix]
 
-        model, lang, metric, bleu_n, pert = params
+        model, lang, pert = params
         config = {}
         config['lang'] = lang
         config['perturb'] = pert
