@@ -262,13 +262,13 @@ if __name__ == '__main__':
     print('Jobs submitted!')
 
 
-# config = AutoConfig.from_pretrained("Helsinki-NLP/opus-mt-en-jap")
-# tokenizer = AutoTokenizer.from_pretrained("Helsinki-NLP/opus-mt-en-jap")
-# model = AutoModelForSeq2SeqLM.from_pretrained("Helsinki-NLP/opus-mt-en-jap")
-#
-# tokenizer.save_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-ja")
-# config.save_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-ja")
-# model.save_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-ja-model")
+# config = AutoConfig.from_pretrained("Helsinki-NLP/opus-mt-en-zh")
+# tokenizer = AutoTokenizer.from_pretrained("Helsinki-NLP/opus-mt-en-zh")
+# model = AutoModelForSeq2SeqLM.from_pretrained("Helsinki-NLP/opus-mt-en-zh")
+# #
+# tokenizer.save_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-zh")
+# config.save_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-zh")
+# model.save_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-zh-model")
 #
 # config = AutoConfig.from_pretrained("Helsinki-NLP/opus-mt-jap-en")
 # tokenizer = AutoTokenizer.from_pretrained("Helsinki-NLP/opus-mt-jap-en")

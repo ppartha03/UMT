@@ -42,7 +42,10 @@ def HyperEvaluate(config):
     perturbation = config['perturb']
     model = config['model']
 
-    nlp_o = spacy.load(ext_language+"_core_news_sm")
+    try:
+        nlp_o = spacy.load(ext_language+"_core_news_sm")
+    except:
+        nlp_o = spacy.load(ext_language+"_core_web_sm")
     nlp = spacy.load("en_core_web_sm")
 
     perturbations = [treeMirrorPre, treeMirrorPo, treeMirrorIn, verbAtBeginning, verbSwaps, adverbVerbSwap,
@@ -51,7 +54,7 @@ def HyperEvaluate(config):
 
     assert perturbation in perturbations
 
-    test_file = open('test_data/opus-'+ext_language+'-en.test.txt')
+    test_file = open('test_data/Helsinki-opus-20/opus-'+ext_language+'-en.test.txt')
 
     lines = test_file.readlines()
 
@@ -131,7 +134,7 @@ if __name__ == '__main__':
 
     PARAM_GRID = list(product(
     ['Helsinki-opus'], #model
-    ['de','fr','ru','ja'], #languages#[verbAtBeginning]
+    ['es','zh'], #languages#[verbAtBeginning] [it, de, ja, ru]
     [treeMirrorPre, treeMirrorPo, treeMirrorIn, verbSwaps, adverbVerbSwap, verbAtBeginning,
       nounVerbSwap, nounVerbMismatched, nounAdjSwap, shuffleHalvesFirst, shuffleHalvesLast,
       reversed, wordShuffle, rotateAroundRoot,functionalShuffle, nounSwaps, conjunctionShuffle],

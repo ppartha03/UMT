@@ -17,7 +17,6 @@ import wandb
 from itertools import product
 import sys
 from filelock import FileLock
-from transformers import MarianTokenizer, MarianMTModel
 from utils.metrics import *
 
 import time
@@ -25,9 +24,6 @@ import time
 #from comet_ml import OfflineExperiment
 
 from perturbations import *
-
-os.environ["WANDB_API_KEY"] = '829432a2360cc623158d30f47c37fe11d3e12d57'
-os.environ["WANDB_MODE"] = "dryrun"
 
 # commandline arguments
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -54,7 +50,10 @@ def HyperEvaluate(config):
         metric_name = config['metric']+'-'+str(config['n'])
         weights = tuple([1./config['n']]*config['n'])
 
-    nlp_o = spacy.load(ext_language+"_core_news_sm")
+    try:
+        nlp_o = spacy.load(ext_language+"_core_news_sm")
+    except:
+        nlp_o = spacy.load(ext_language+"_core_web_sm")
     nlp = spacy.load("en_core_web_sm")
 
     perturbations = [treeMirrorPre, treeMirrorPo, treeMirrorIn, verbAtBeginning, verbSwaps, adverbVerbSwap,
@@ -62,10 +61,6 @@ def HyperEvaluate(config):
       reversed, wordShuffle, rotateAroundRoot,functionalShuffle, nounSwaps, conjunctionShuffle]
 
     assert perturbation in perturbations
-
-    test_file = open('test_data/opus-'+ext_language+'-en.test.txt')
-
-    lines = test_file.readlines()
 
     # todo : Save samples in a csv : with metrics, perturbed example and beams
     # todo : ensure the beams have the same seed across runs and so do the perturbation functions. Use the index as seed value.
@@ -110,7 +105,7 @@ def HyperEvaluate(config):
             en_perturb = json.loads(eng_perturb_sents[i])
 
             o_lang_gold = json.loads(o_lang_gold_sents[i])
-            o_lang_perturb = json.loads(o_lang_pertub_sents[i])
+            o_lang_perturb = json.loads(o_lang_perturb_sents[i])
 
             en_gold_translate = json.loads(en_gold_translate_sents[i])
             en_perturb_translate = json.loads(en_perturb_translate_sents[i])
@@ -157,8 +152,8 @@ def HyperEvaluate(config):
 if __name__ == '__main__':
 
     PARAM_GRID = list(product(
-    ['Helsinki-opus'], #model
-    ['de','fr','ru','ja'], #languages
+    ['wmt19'], #model For wmt18 ['de', 'ru', 'zh']
+    ['de', 'lt', 'ru', 'zh'], #languages
     ['bleu','levenshtein'], #metric
     [2,3,4], #bleu-n
     [treeMirrorPre, treeMirrorPo, treeMirrorIn, verbSwaps, adverbVerbSwap, verbAtBeginning,
@@ -179,10 +174,10 @@ if __name__ == '__main__':
         config['perturb'] = pert
         config['model'] = model
         config['metric'] = metric
-        config['bleu_n'] = None
+        config['n'] = None
 
         if config['metric'] == 'bleu':
-            config['bleu-n'] = bleu_n
+            config['n'] = bleu_n
 
         if config not in h_param_list:
             h_param_list.append(config)
@@ -203,12 +198,12 @@ if __name__ == '__main__':
     workers_per_gpu = 10
     executor = submitit.AutoExecutor(folder=submitit_logdir)
     executor.update_parameters(
-        timeout_min=120,
+        timeout_min=60,
         gpus_per_node=num_gpus,
         slurm_additional_parameters={"account": "rrg-bengioy-ad"},
         tasks_per_node=num_gpus,
         cpus_per_task=workers_per_gpu,
-        slurm_mem="16G",#16G
+        slurm_mem="32G",#16G
         slurm_array_parallelism=100,
     )
     job = executor.map_array(HyperEvaluate,h_param_list)
