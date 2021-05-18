@@ -530,8 +530,10 @@ def wordShuffle(in_str, nlp = None):
 
     assert len(str_l) > 5
 
-    random.shuffle(str_l[:-1])
-    return ' '.join(str_l) + ' ' + str(str_l[-1])
+    str_ss = str_l[:-1]
+
+    random.shuffle(str_ss)
+    return ' '.join(str_ss) + ' ' + str(str_l[-1])
 
 def shuffleHalvesFirst(in_str, nlp = None):
     toks = nlp(in_str)

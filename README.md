@@ -1,8 +1,5 @@
 # UMT
 
-## Colab
-There is an interactive version available in [colab](https://colab.research.google.com/drive/1tIoFzz7oZGdr5abJofWGV-6SsRWpSTsC?usp=sharing) to play around with the functions.
-
 ## Using the NMT models
 
 If running in compute-canada clusters, download the models below from the launch machine.

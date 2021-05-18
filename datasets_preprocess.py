@@ -75,12 +75,12 @@ def HyperEvaluate(config):
 
     dataset = load_dataset(model, ext_language+'-en', split = 'validation')
 
-    this_perturbation = total_sentences = len(dataset) // 4
+    this_perturbation = total_sentences = len(dataset)
     with lock:
         for i in range(len(dataset)):
             try:
-                other_lang_gold = dataset['translation'][ext_language]
-                eng_gold = dataset['translation']['en']
+                other_lang_gold = dataset[i]['translation'][ext_language]
+                eng_gold = dataset[i]['translation']['en']
 
                 eng_perturbed = perturbation(eng_gold, nlp = nlp)
                 other_lang_perturbed = perturbation(other_lang_gold, nlp = nlp_o)
@@ -130,7 +130,7 @@ if __name__ == '__main__':
 
     PARAM_GRID = list(product(
     ['wmt19'], #model For wmt18 ['de', 'ru', 'zh']
-    ['de', 'lt', 'ru', 'zh'], #languages#[verbAtBeginning] 
+    ['de', 'lt', 'ru', 'zh'], #languages#[verbAtBeginning]
     [treeMirrorPre, treeMirrorPo, treeMirrorIn, verbSwaps, adverbVerbSwap, verbAtBeginning,
       nounVerbSwap, nounVerbMismatched, nounAdjSwap, shuffleHalvesFirst, shuffleHalvesLast,
       reversed, wordShuffle, rotateAroundRoot,functionalShuffle, nounSwaps, conjunctionShuffle],

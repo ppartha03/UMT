@@ -134,10 +134,11 @@ if __name__ == '__main__':
 
     PARAM_GRID = list(product(
     ['Helsinki-opus'], #model
-    ['es','zh'], #languages#[verbAtBeginning] [it, de, ja, ru]
-    [treeMirrorPre, treeMirrorPo, treeMirrorIn, verbSwaps, adverbVerbSwap, verbAtBeginning,
-      nounVerbSwap, nounVerbMismatched, nounAdjSwap, shuffleHalvesFirst, shuffleHalvesLast,
-      reversed, wordShuffle, rotateAroundRoot,functionalShuffle, nounSwaps, conjunctionShuffle],
+    ['fr', 'it', 'de', 'ja', 'ru' ,'es','zh'], #languages#[verbAtBeginning] []
+    [wordShuffle]
+    #[treeMirrorPre, treeMirrorPo, treeMirrorIn, verbSwaps, adverbVerbSwap, verbAtBeginning,
+    #  nounVerbSwap, nounVerbMismatched, nounAdjSwap, shuffleHalvesFirst, shuffleHalvesLast,
+    #  reversed, wordShuffle, rotateAroundRoot,functionalShuffle, nounSwaps, conjunctionShuffle],
     )
     )
 
@@ -170,7 +171,7 @@ if __name__ == '__main__':
     workers_per_gpu = 10
     executor = submitit.AutoExecutor(folder=submitit_logdir)
     executor.update_parameters(
-        timeout_min=30,
+        timeout_min=45,
         gpus_per_node=num_gpus,
         slurm_additional_parameters={"account": "rrg-bengioy-ad"},
         tasks_per_node=num_gpus,

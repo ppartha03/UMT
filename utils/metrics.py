@@ -1,10 +1,23 @@
 from nltk.translate.bleu_score import sentence_bleu as bleu_score
+#from bleurt import score
+#bleurt_ops = score.create_bleurt_ops('/home/pparth2/scratch/UMT/UMT/Results/cached/bleurt-base-128')
+from bert_score import score
 
-def bleu(a,b, weights = (1.0,)):
+def bleurt_score(a,b, weights=None, lang=None):
+    out = bleurt_ops(references=a, candidates=b)
+    out_f = [float(_) for _ in out["predictions"]]
+    return out_f
+
+def bertscore(a,b, weights=None, lang=None):
+    _,_,f1 = score(a, b, lang=lang, verbose=False)
+    out_f = [float(_) for _ in f1]
+    return out_f
+
+def bleu(a,b, weights = (1.0,), lang=None):
     a = [a]
     return bleu_score(a, b, weights)
 
-def levenshtein(a,b, weights = None):
+def levenshtein(a,b, weights = None, lang=None):
     "Calculates the Levenshtein distance between a and b."
     n, m = len(a), len(b)
     if n > m:

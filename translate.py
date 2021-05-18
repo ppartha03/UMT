@@ -18,6 +18,7 @@ from itertools import product
 import sys
 from filelock import FileLock
 from transformers import MarianTokenizer, MarianMTModel
+from easynmt import EasyNMT
 
 import time
 
@@ -52,22 +53,24 @@ def HyperEvaluate(config):
       reversed, wordShuffle, rotateAroundRoot,functionalShuffle, nounSwaps, conjunctionShuffle]
 
     assert perturbation in perturbations
-
-    model = MarianMTModel.from_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-" + ext_language + "-model").to(device)
-    tokenizer = MarianTokenizer.from_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-" + ext_language)
-
+    
+    if 'opus' in model_:
+        model = MarianMTModel.from_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-" + ext_language + "-model").to(device)
+        tokenizer = MarianTokenizer.from_pretrained("/home/pparth2/scratch/UMT/UMT/Results/cached/Helsinki-NLP-opus-en-" + ext_language)
+    else:
+        model = EasyNMT(model_, cache_folder="/home/pparth2/scratch/UMT/UMT/cached_model")
     # todo : Save samples in a csv : with metrics, perturbed example and beams
     # todo : ensure the beams have the same seed across runs and so do the perturbation functions. Use the index as seed value.
 
-    target_dir = os.path.join('Data', model_, ext_language, perturbation.__name__)
+    target_dir = os.path.join('Data', 'Helsinki-opus', ext_language, perturbation.__name__)
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
 
     eng_gold_file =  open(os.path.join(target_dir, 'en.gold'), "r")
     eng_perturb_file = open(os.path.join(target_dir, 'en.perturb'), "r")
 
-    o_lang_gold_file = open(os.path.join(target_dir, 'en.gold.translate'), "w")
-    o_lang_perturb_file = open(os.path.join(target_dir, 'en.perturb.translate'), "w")
+    o_lang_gold_file = open(os.path.join(target_dir, 'en.gold.' + model_+ '.translate'), "w")
+    o_lang_perturb_file = open(os.path.join(target_dir, 'en.perturb.'+model_+'.translate'), "w")
 
     eng_gold_sents = eng_gold_file.readlines()
     eng_perturb_sents = eng_perturb_file.readlines()
@@ -86,14 +89,18 @@ def HyperEvaluate(config):
             eng_gold_batch = [_['text'].strip() for _ in e_gold_batch]
             eng_perturb_batch = [_['text'].strip() for _ in e_perturb_batch]
 
-            batch_gold = tokenizer.prepare_seq2seq_batch(src_texts=eng_gold_batch, return_tensors="pt").to(device)
-            batch_perturb = tokenizer.prepare_seq2seq_batch(src_texts=eng_perturb_batch, return_tensors="pt").to(device)
 
-            gen = model.generate(**batch_gold)
-            translate_gold = tokenizer.batch_decode(gen, skip_special_tokens=True)
+            if 'opus' not in model_:
+                translate_gold = model.translate(eng_gold_batch, source_lang='en',target_lang=ext_language)
+                translate_perturb =  model.translate(eng_perturb_batch, source_lang='en',target_lang=ext_language)
+            else:
+                batch_perturb = tokenizer.prepare_seq2seq_batch(src_texts=eng_perturb_batch, return_tensors="pt").to(device)
+                batch_gold = tokenizer.prepare_seq2seq_batch(src_texts=eng_gold_batch, return_tensors="pt").to(device)
+                gen = model.generate(**batch_gold)
+                translate_gold = tokenizer.batch_decode(gen, skip_special_tokens=True)
 
-            gen = model.generate(**batch_perturb)
-            translate_perturb = tokenizer.batch_decode(gen, skip_special_tokens=True)
+                gen = model.generate(**batch_perturb)
+                translate_perturb = tokenizer.batch_decode(gen, skip_special_tokens=True)
 
             for k in range(len(e_gold_batch)):
                 original_id = e_gold_batch[k]['original_id']
@@ -118,11 +125,11 @@ def HyperEvaluate(config):
 if __name__ == '__main__':
 
     PARAM_GRID = list(product(
-    ['wmt19'], #model wmt18 ['de', 'ru', 'zh']
-    ['de', 'lt' , 'ru', 'zh'],#['de','fr','ru','ja'], #languages
+    ['m2m_100_418m', 'm2m_100_1.2b'], #model Helsinki-opus
+    ['fr', 'it', 'de', 'ja', 'ru' ,'es','zh'], #languages
     [treeMirrorPre, treeMirrorPo, treeMirrorIn, verbSwaps, adverbVerbSwap, verbAtBeginning,
-      nounVerbSwap, nounVerbMismatched, nounAdjSwap, shuffleHalvesFirst, shuffleHalvesLast,
-      reversed, wordShuffle, rotateAroundRoot,functionalShuffle, nounSwaps, conjunctionShuffle]
+       nounVerbSwap, nounVerbMismatched, nounAdjSwap, shuffleHalvesFirst, shuffleHalvesLast,
+       reversed, wordShuffle, rotateAroundRoot,functionalShuffle, nounSwaps, conjunctionShuffle]
     )
     )
 
@@ -156,12 +163,12 @@ if __name__ == '__main__':
     workers_per_gpu = 10
     executor = submitit.AutoExecutor(folder=submitit_logdir)
     executor.update_parameters(
-        timeout_min=180,
+        timeout_min=90,
         gpus_per_node=num_gpus,
         slurm_additional_parameters={"account": "rrg-bengioy-ad"},
         tasks_per_node=num_gpus,
         cpus_per_task=workers_per_gpu,
-        slurm_mem="32G",#16G
+        slurm_mem="47G",#16G
         slurm_array_parallelism=100,
     )
     job = executor.map_array(HyperEvaluate,h_param_list)
